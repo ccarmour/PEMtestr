@@ -7,63 +7,43 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 
 require(ggplot2)
 require(sf)
 require(terra)
 require(tidyverse)
-require(caret)
+require(readxl)
+require(writexl)
+require(flextable)
+require(janitor)
 
+set_flextable_defaults(
+  font.family = "Helvetica", 
+  font.size = 9,
+  font.color = "black",
+  table.layout = "fixed",
+  digits = 0,
+  text.align ="centre"#,
+  #theme_fun = "theme_vanilla"
+  )+
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-```{r}
+```{r reclass-write}
 
-## Read in the gpkg layers
+## Read in the gpkg layers and create OG shapefiles
 gpkg_path <- "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/Deception_maps.gpkg"
 lyrs <- st_layers(gpkg_path)
+
 rcl.tbl <- read.csv("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/Deception_orig-new_Label_reclass_v3.csv",
-                    na.strings = "") %>%
-  tibble()
+                    na.strings = "") %>% tibble()
 
-```
-
-
-```{r orig}
-
-tem.pem <- st_read(gpkg_path, layer = lyrs$name[1]) %>%
+tem.pem.rcl <- st_read(gpkg_path, layer = lyrs$name[1]) %>%
   st_cast(to = "MULTIPOLYGON") %>%
   mutate(across(where(is.character), na_if, "")) %>%
-  select(c(BGC_LBL, SDEC_1, SITES_LBL1, SDEC_2, SITES_LBL2, SDEC_3, SITES_LBL3))
-
-st_write(tem.pem, dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_orig.shp',
-         append = FALSE)
-
-exp.pem <- st_read(gpkg_path, layer = lyrs$name[2]) %>%
-  st_cast(to = "MULTIPOLYGON") %>%
-  mutate(across(where(is.character), na_if, "")) %>%
-  select(c(BGC_LBL, response_combo_bcgs_key_all_x))
-
-st_write(exp.pem, dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_pem_orig.shp',
-         append = FALSE)
-
-mle.pem <- st_read(gpkg_path, layer = lyrs$name[3]) %>%
-  st_cast(to = "MULTIPOLYGON") %>%
-  mutate(across(where(is.character), na_if, "")) %>%
-  select(response_combo_bcgs_key_all_x)
-
-st_write(mle.pem, dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/mle_pem_orig.shp',
-         append = FALSE)
-
-```
-
-
-```{r reclass}
-
-tem.pem.rcl <- tem.pem %>%
-  filter(BGC_LBL != "SBSdk") %>%
+  select(c(BGC_LBL, SDEC_1, SITES_LBL1, SDEC_2, SITES_LBL2, SDEC_3, SITES_LBL3)) %>%
   mutate(SITES_LBL1_full = case_when(!is.na(SITES_LBL1) ~ str_c(BGC_LBL, SITES_LBL1, sep = "_"), TRUE ~ NA_character_),
          SITES_LBL2_full = case_when(!is.na(SITES_LBL2) ~ str_c(BGC_LBL, SITES_LBL2, sep = "_"), TRUE ~ NA_character_),
          SITES_LBL3_full = case_when(!is.na(SITES_LBL3) ~ str_c(BGC_LBL, SITES_LBL3, sep = "_"), TRUE ~ NA_character_)) %>%
@@ -74,57 +54,28 @@ tem.pem.rcl <- tem.pem %>%
   left_join(y = rcl.tbl[c("label.orig", "matched")], by = join_by(SITES_LBL3_full == label.orig), keep = TRUE, na_matches = "never") %>%
   rename(rspns_t_3 = matched) %>%
   select(c(BGC_LBL, SDEC_1, SDEC_2, SDEC_3, rspns_t_1, rspns_t_2, rspns_t_3)) %>%
-  pivot_longer(cols = c(rspns_t_1, rspns_t_2, rspns_t_3), names_to = "SITE.CALL", values_to = "rspns_t") %>%
-  pivot_longer(cols = c(SDEC_1, SDEC_2, SDEC_3), names_to = "SDEC.CALL", values_to = "SDEC.PROP") %>%
-  mutate(call.match = str_split(SITE.CALL, pattern = "_", simplify = T)[,3],
-         prop.match = str_split(SDEC.CALL, pattern = "_", simplify = T)[,2]) %>%
-  filter(as.numeric(call.match) == as.numeric(prop.match)) %>%
-  select(!c(call.match, prop.match))
+  filter(str_detect(BGC_LBL, pattern = "[wp]$", negate = T) & str_detect(BGC_LBL, pattern = "SBSdk", negate = T))
 
-st_write(tem.pem.rcl,
-         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_rcl.shp',
-         append = FALSE)
-
-st_write(filter(tem.pem.rcl, SITE.CALL == "rspns_t_1"),
-         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_rcl_rspns_1.shp',
-         append = FALSE)
-st_write(filter(tem.pem.rcl, SITE.CALL == "rspns_t_2"),
-         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_rcl_rspns_2.shp',
-         append = FALSE)
-st_write(filter(tem.pem.rcl, SITE.CALL == "rspns_t_3"),
-         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_rcl_rspns_3.shp',
-         append = FALSE)
-
-## Create unpivoted but still reclassified version for geometric intersections so as not to triplicate polygons
-tem.pem.rcl_wide <- tem.pem %>%
-  filter(BGC_LBL != "SBSdk") %>%
-  mutate(SITES_LBL1_full = case_when(!is.na(SITES_LBL1) ~ str_c(BGC_LBL, SITES_LBL1, sep = "_"), TRUE ~ NA_character_),
-         SITES_LBL2_full = case_when(!is.na(SITES_LBL2) ~ str_c(BGC_LBL, SITES_LBL2, sep = "_"), TRUE ~ NA_character_),
-         SITES_LBL3_full = case_when(!is.na(SITES_LBL3) ~ str_c(BGC_LBL, SITES_LBL3, sep = "_"), TRUE ~ NA_character_)) %>%
-  left_join(y = rcl.tbl[c("label.orig", "matched")], by = join_by(SITES_LBL1_full == label.orig), keep = TRUE, na_matches = "never") %>%
-  rename(rspns_t_1 = matched) %>%
-  left_join(y = rcl.tbl[c("label.orig", "matched")], by = join_by(SITES_LBL2_full == label.orig), keep = TRUE, na_matches = "never") %>%
-  rename(rspns_t_2 = matched) %>%
-  left_join(y = rcl.tbl[c("label.orig", "matched")], by = join_by(SITES_LBL3_full == label.orig), keep = TRUE, na_matches = "never") %>%
-  rename(rspns_t_3 = matched) %>%
-  select(c(BGC_LBL, SDEC_1, SDEC_2, SDEC_3, rspns_t_1, rspns_t_2, rspns_t_3))
-
-exp.pem.rcl <- exp.pem %>%
-  filter(BGC_LBL != "SBSdk") %>%
+exp.pem.rcl <- st_read(gpkg_path, layer = lyrs$name[2]) %>%
+  st_cast(to = "MULTIPOLYGON") %>%
+  mutate(across(where(is.character), na_if, "")) %>%
+  rename(rspns_o = response_combo_bcgs_key_all_x) %>%
+  select(c(BGC_LBL, rspns_o)) %>%
   left_join(y = rcl.tbl[c("label.orig", "matched")],
-            by = join_by(response_combo_bcgs_key_all_x == label.orig),
+            by = join_by(rspns_o == label.orig),
             keep = FALSE,
             na_matches = "never") %>%
   rename(rspns_x = matched) %>%
-  select(BGC_LBL, rspns_x)
+  select(BGC_LBL, rspns_x) %>%
+  filter(str_detect(BGC_LBL, pattern = "[p]$", negate = T) & str_detect(BGC_LBL, pattern = "SBSdk", negate = T))
 
-st_write(exp.pem.rcl,
-         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_pem_rcl.shp',
-         append = FALSE)
-
-mle.pem.rcl <- mle.pem %>%
+mle.pem.rcl <- st_read(gpkg_path, layer = lyrs$name[3]) %>%
+  st_cast(to = "MULTIPOLYGON") %>%
+  mutate(across(where(is.character), na_if, "")) %>%
+  rename(rspns_o = response_combo_bcgs_key_all_x) %>%
+  select(c(rspns_o)) %>%
   left_join(y = rcl.tbl[c("label.mle", "matched")],
-            by = join_by(response_combo_bcgs_key_all_x == label.mle),
+            by = join_by(rspns_o == label.mle),
             keep = FALSE,
             na_matches = "never") %>%
   rename(rspns_m = matched) %>%
@@ -132,66 +83,146 @@ mle.pem.rcl <- mle.pem %>%
                              TRUE ~ "Unspecified")) %>% 
   select(BGC_LBL, rspns_m)
 
+
+```
+
+```{r reclass-read, eval = FALSE, echo = FALSE}
+
+st_write(tem.pem.rcl,
+         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_rcl.shp',
+         append = FALSE)
+
+st_write(exp.pem.rcl,
+         dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_pem_rcl.shp',
+         append = FALSE)
+
 st_write(mle.pem.rcl,
          dsn = 'C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/mle_pem_rcl.shp',
          append = FALSE)
 
+tem.pem.rcl <- st_read('C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_pem_rcl.shp')
+exp.pem.rcl <- st_read('C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_pem_rcl.shp')
+mle.pem.rcl <- st_read('C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/mle_pem_rcl.shp')
 
 ```
 
-```{r}
+```{r areas, eval = FALSE, echo = FALSE}
 
-area.tem <- tem.pem.rcl %>%
-  mutate(area.polygon.call = (SDEC.PROP/10)*as.numeric(st_area(.))) %>%
+area.tem.rcl <- tem.pem.rcl %>%
+  pivot_longer(cols = c(rspns_t_1, rspns_t_2, rspns_t_3), names_to = "SITE.CALL", values_to = "rspns_t") %>%
+  pivot_longer(cols = c(SDEC_1, SDEC_2, SDEC_3), names_to = "SDEC.CALL", values_to = "SDEC.PROP") %>%
+  mutate(call.match = str_split(SITE.CALL, pattern = "_", simplify = T)[,3],
+         prop.match = str_split(SDEC.CALL, pattern = "_", simplify = T)[,2]) %>%
+  filter(as.numeric(call.match) == as.numeric(prop.match)) %>%
+  select(!c(call.match, prop.match)) %>%
+  mutate(area.polygon = as.numeric(st_area(.)),
+         area.polygon.call = (SDEC.PROP/10)*area.polygon) %>%
   st_drop_geometry() %>%
   group_by(rspns_t) %>%
   summarize(area.totals.tem = sum(area.polygon.call , na.rm = T)) %>%
   filter(!is.na(rspns_t))
 
-area.exp <- exp.pem.rcl %>%
+# st_write(area.tem.rcl,
+#          dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_area.shp",
+#          append = FALSE)
+
+area.exp.rcl <- exp.pem.rcl %>%
   mutate(area.polygon = as.numeric(st_area(.))) %>%
   st_drop_geometry() %>%
   group_by(rspns_x) %>%
   summarize(area.totals.exp = sum(area.polygon, na.rm = T)) %>%
   filter(!is.na(rspns_x))
 
-area.mle <- mle.pem.rcl %>%
+# st_write(area.exp.rcl,
+#          dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_area.shp",
+#          append = FALSE)
+
+area.mle.rcl <- mle.pem.rcl %>%
   mutate(area.polygon = as.numeric(st_area(.))) %>%
   st_drop_geometry() %>%
   group_by(rspns_m) %>%
   summarize(area.totals.mle = sum(area.polygon, na.rm = T)) %>%
   filter(!is.na(rspns_m))
 
+# st_write(area.mle.rcl,
+#          dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_area.shp",
+#          append = FALSE)
 
 ```
 
-```{r}
+```{r intersect-write}
 
-int.mle.tem <-st_intersection(mle.pem.rcl, tem.pem.rcl_wide) %>% st_collection_extract(., "POLYGON")
+# Take intersection of rcl PEM map and TEM map, extract only polygons, and remove polygons where BGC_LBL (mle) is undesireable
+int.mle.tem <- mle.pem.rcl %>%
+  filter(str_detect(BGC_LBL, pattern = "[wp]$", negate = T) & str_detect(BGC_LBL, pattern = "SBSdk", negate = T)) %>%
+  st_intersection(., tem.pem.rcl) %>%
+  st_collection_extract(., "POLYGON") %>%
+  mutate(BGC_LBL = case_when(BGC_LBL == "Unspecified" ~ BGC_LBL.1, TRUE ~ BGC_LBL),
+         rspns_m = case_when(rspns_m == "nonfor" ~ paste0(BGC_LBL, "_", rspns_m), TRUE ~ rspns_m))
 
-st_write(int.mle.tem, dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_mle_int.shp")
+int.mle.exp <- mle.pem.rcl %>%
+  filter(str_detect(BGC_LBL, pattern = "[p]$", negate = T) & str_detect(BGC_LBL, pattern = "SBSdk", negate = T)) %>%
+  st_intersection(., exp.pem.rcl) %>% 
+  st_collection_extract(., "POLYGON") %>%
+  mutate(BGC_LBL = case_when(BGC_LBL == "Unspecified" ~ BGC_LBL.1, TRUE ~ BGC_LBL),
+         rspns_m = case_when(rspns_m == "nonfor" ~ paste0(BGC_LBL, "_", rspns_m), TRUE ~ rspns_m))
 
-area.mle.tem <- int.mle.tem %>%
+```
+
+```{r intersect-read, eval = FALSE, echo = FALSE}
+
+st_write(int.mle.tem,
+         dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_mle_int.shp",
+         append = FALSE)
+
+st_write(int.mle.exp,
+         dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_mle_int.shp",
+         append = TRUE)
+
+# int.mle.tem <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/tem_mle_int.shp")
+# int.mle.exp <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_mle_int.shp")
+
+```
+
+```{r area-tem-mle}
+
+area.tem.int <- int.mle.tem %>%
+  pivot_longer(cols = c(rspns_t_1, rspns_t_2, rspns_t_3), names_to = "SITE.CALL", values_to = "rspns_t") %>%
+  pivot_longer(cols = c(SDEC_1, SDEC_2, SDEC_3), names_to = "SDEC.CALL", values_to = "SDEC.PROP") %>%
+  mutate(call.match = str_split(SITE.CALL, pattern = "_", simplify = T)[,3],
+         prop.match = str_split(SDEC.CALL, pattern = "_", simplify = T)[,2]) %>%
+  filter(as.numeric(call.match) == as.numeric(prop.match)) %>%
+  select(!c(call.match, prop.match)) %>%
   mutate(area.polygon = as.numeric(st_area(.)),
-         BGC_LBL = BGC_LBL.1,
-         rspns_m = case_when(rspns_m == "nonfor" ~ paste0(BGC_LBL, "_", rspns_m), TRUE ~ rspns_m)) %>%
+         area.polygon.call = (SDEC.PROP/10)*area.polygon) %>%
+  st_drop_geometry() %>%
+  group_by(rspns_t) %>%
+  summarize(area.totals.tem = sum(area.polygon.call , na.rm = T)) %>%
+  filter(!is.na(rspns_t))
+
+area.mle.tem.int <- int.mle.tem %>%
+  mutate(area.polygon = as.numeric(st_area(.))) %>%
   st_drop_geometry() %>%
   group_by(rspns_m) %>%
   summarize(area.totals.mle = sum(area.polygon, na.rm = T))
 
-area.totals.mt <- full_join(area.tem, area.mle.tem, join_by(rspns_t == rspns_m), keep = TRUE, na_matches = "never") %>%
+area.totals.mt <- full_join(area.mle.tem.int, area.tem.int, join_by(rspns_m == rspns_t), keep = TRUE, na_matches = "never") %>%
   rename(tem.area = area.totals.tem, mle.area = area.totals.mle) %>%
-  # pivot_longer(c(tem.area, mle.area), names_to = "source", values_to = "areas") %>%
   mutate(rspns = case_when(!is.na(rspns_m) ~ rspns_m, TRUE ~ rspns_t),
          BGC_LBL = str_split(rspns, pattern = "_", simplify = TRUE)[,1]) %>%
-  filter(str_detect(BGC_LBL, pattern = "[wp]$", negate = T)) %>%
   replace_na(list(tem.area = 0, mle.area = 0)) %>%
   select(c(rspns, tem.area, mle.area, BGC_LBL)) %>%
   mutate(diff = (mle.area - tem.area)/tem.area,
-         diff.adj = case_when(abs(diff) > 1 ~ sign(diff), TRUE ~ diff)) %>%
+         diff.adj = case_when(abs(diff) > 1 ~ sign(diff), TRUE ~ diff),
+         diff.ha = (mle.area - tem.area)/100000) %>%
   relocate(BGC_LBL, .before = 1)
 
-write.csv(area.totals.mt, "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/area_totals_TEM_MLE.csv", append = FALSE)
+writexl::write_xlsx(area.totals.mt, "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/area_totals_TEM_MLE.xlsx")
+
+
+```
+
+```{r figs-tem-mle, echo = FALSE}
 
 df <- area.totals.mt
 
@@ -203,37 +234,40 @@ ggplot(data = df, aes(x = rspns, y = diff.adj, fill = BGC_LBL)) +
                      labels = scales::percent) +
   theme(axis.text.x = element_text(angle = 60, hjust=1))
 
-
 ```
 
-```{r}
 
-int.mle.exp <- st_intersection(mle.pem.rcl, exp.pem.rcl) %>% st_collection_extract(., "POLYGON")
+```{r area-exp-mle}
 
-st_write(int.mle.exp, dsn = "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/40_accuracy_testing/exp_mle_int.shp")
+area.exp.int <- int.mle.exp %>%
+  mutate(area.polygon = as.numeric(st_area(.))) %>%
+  st_drop_geometry() %>%
+  group_by(rspns_x) %>%
+  summarize(area.totals.exp = sum(area.polygon , na.rm = T)) %>%
+  filter(!is.na(rspns_x))
 
-area.mle.exp <- int.mle.exp %>%
-  mutate(area.polygon = as.numeric(st_area(.)),
-         BGC_LBL = BGC_LBL.1,
-         rspns_m = case_when(rspns_m == "nonfor" ~ paste0(BGC_LBL, "_", rspns_m), TRUE ~ rspns_m)) %>%
+area.mle.exp.int <- int.mle.exp %>%
+  mutate(area.polygon = as.numeric(st_area(.))) %>%
   st_drop_geometry() %>%
   group_by(rspns_m) %>%
   summarize(area.totals.mle = sum(area.polygon, na.rm = T))
 
-area.totals.mx <- full_join(area.exp, area.mle.exp, join_by(rspns_x == rspns_m), keep = TRUE, na_matches = "never") %>%
+area.totals.mx <- full_join(area.mle.exp.int, area.exp.int, join_by(rspns_m == rspns_x), keep = TRUE, na_matches = "never") %>%
   rename(exp.area = area.totals.exp, mle.area = area.totals.mle) %>%
-  # pivot_longer(c(exp.area, mle.area), names_to = "source", values_to = "areas") %>%
   mutate(rspns = case_when(!is.na(rspns_m) ~ rspns_m, TRUE ~ rspns_x),
          BGC_LBL = str_split(rspns, pattern = "_", simplify = TRUE)[,1]) %>%
-  filter(str_detect(BGC_LBL, pattern = "[p]$", negate = T)) %>%
   replace_na(list(exp.area = 0, mle.area = 0)) %>%
   select(c(rspns, exp.area, mle.area, BGC_LBL)) %>%
   mutate(diff = (mle.area - exp.area)/exp.area,
-         diff.adj = case_when(abs(diff) > 1 ~ sign(diff), TRUE ~ diff)) %>%
+         diff.adj = case_when(abs(diff) > 1 ~ sign(diff), TRUE ~ diff),
+         diff.ha = (mle.area - exp.area)/100000) %>%
   relocate(BGC_LBL, .before = 1)
 
+writexl::write_xlsx(area.totals.mx, "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/area_totals_EXP_MLE.xlsx")
 
-write.csv(area.totals.mx, "C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/Deception_AOI/area_totals_EXP_MLE.csv", append = FALSE)
+```
+
+```{r figs-exp-mle}
 
 df <- area.totals.mx
 
@@ -241,9 +275,20 @@ ggplot(data = df, aes(x = rspns, y = diff.adj, fill = BGC_LBL)) +
   geom_bar(stat = "identity", position = position_dodge(0.9)) +
   ggtitle("Relative Over/Under Predictions of MLE from Reference EXP") +
   scale_y_continuous(breaks = seq(-1,1,0.2),
-                     limits = c(-1,1),
+                     limits = c(),
                      labels = scales::percent) +
   theme(axis.text.x = element_text(angle = 60, hjust=1))
+
+```
+
+```{r scratch}
+
+
+
+
+rich_tab11 <- as.data.frame(rich_tab11)
+df_flex <- flextable(df) %>% autofit()
+save_as_docx(rich_tab1_flex , path = "./figures/LifeFormRichnessTable.docx")
 
 ```
 
