@@ -50,7 +50,7 @@ for(i in 1:length(ss_all)){
     # Extract which target cells have overlap (share a square) with non-target cells
     sq_count <- ss_cells_tar[ss_cells_tar %in% ss_cells_fuzz] %>% length()
     # Extract which target neighbours have overlap (share a border) with non-target cells
-    br_count <- ss_cells_fuzz[ss_cells_fuzz %in% ss_nbrs] %>% length()
+    br_count <- ss_nbrs[ss_nbrs %in% ss_cells_fuzz] %>% length()
 
     # add up the total score as per rules where shared square = +0.25 and shared border = +0.1
     score = sq_count*0.25 + br_count*0.1
