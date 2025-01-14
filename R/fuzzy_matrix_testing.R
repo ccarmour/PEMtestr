@@ -29,7 +29,7 @@ for(i in 1:length(ss_all)){
   # Find cells of the target site series
   ss_cells_tar <- filter(edat, SS_NoSpace == ss_tar) %>%
     pull(Edatopic)
-  # Find neighbours and remove duplicate neighbours from list
+  # Find neighbours
   ss_nbrs <- filter(nbrs, target %in% ss_cells_tar) %>%
     pull(fuzzy)
 
