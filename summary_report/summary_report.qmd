@@ -26,8 +26,6 @@ require(gt)
 require(tidyterra)
 require(ggpmisc)
 require(viridis)
-
-renv::snapshot()
 ```
 
 ```{r graphics-setup, include = FALSE}
