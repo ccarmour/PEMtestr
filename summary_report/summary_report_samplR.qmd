@@ -1,0 +1,63 @@
+---
+title: "SamplR Summary Report"
+format: PrettyPDF-pdf
+fig.height: 4.5
+fig.width: 6.5
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+
+# devtools::install_github("ropenscilabs/ochRe")
+
+remotes::install_github("ninoxconsulting/PEMr", build_vignettes = TRUE)
+remotes::install_github("ninoxconsulting/PEMprepr", build_vignettes = TRUE)
+remotes::install_github("ninoxconsulting/PEMsamplr", build_vignettes = TRUE)
+
+library(PEMr)
+library(PEMprepr)
+require(PEMsamplr)
+require(tictoc)
+require(tidyverse)
+require(magrittr)
+require(terra)
+require(sf)
+require(pals)
+require(ochRe)
+require(showtext)
+require(ggtext)
+require(gghighlight)
+require(ochRe)
+require(ggspatial)
+require(gt)
+require(tidyterra)
+require(ggpmisc)
+require(viridis)
+require(bcmaps)
+```
+
+```{r graphics-setup, include = FALSE}
+
+pal.parl <- colorRampPalette(ochRe::ochre_palettes[["parliament"]])
+pal.nam <- colorRampPalette(ochRe::ochre_palettes[["namatjira_qual"]])
+font_add_google('Anton', 'anton')
+showtext_auto()
+
+```
+
+This report provides several metrics of interest from the sampling stage of the PEM process, including the distribution of forest age, dominant species, common disturbances, topographic variables, and others. It also summarizes key outputs from the prepR workflow and briefly describes their purpose in the modelling process. More details on the data, methodology, and results from the samplR workflow can be found in the \[PEM Manual\].
+
+```{r aoi-setup}
+
+  path = "C:/Users/ccarmour.stu/OneDrive/PEM"
+  aoi_name = "Deception_AOI"
+  aoi_file = "C:\\Users\\ccarmour.stu\\OneDrive\\PEM\\Deception_AOI\\00_raw_inputs\\10_vector\\aoi_raw.gpkg"
+  open=FALSE
+  proj_dir <- file.path(path, aoi_name)
+
+
+
+
+```
+
