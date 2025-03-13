@@ -10,14 +10,14 @@ editor_options:
 ```{r setup, include = FALSE}
 
 # devtools::install_github("ropenscilabs/ochRe")
+# 
+# remotes::install_github("ninoxconsulting/PEMr", build_vignettes = FALSE)
+# remotes::install_github("ninoxconsulting/PEMprepr", build_vignettes = FALSE)
+# remotes::install_github("ninoxconsulting/PEMsamplr", build_vignettes = FALSE)
 
-remotes::install_github("ninoxconsulting/PEMr", build_vignettes = TRUE)
-remotes::install_github("ninoxconsulting/PEMprepr", build_vignettes = TRUE)
-remotes::install_github("ninoxconsulting/PEMsamplr", build_vignettes = TRUE)
-
-library(PEMr)
-library(PEMprepr)
-require(PEMsamplr)
+# library(PEMr)
+# library(PEMprepr)
+# require(PEMsamplr)
 require(tictoc)
 require(tidyverse)
 require(magrittr)
@@ -35,29 +35,61 @@ require(tidyterra)
 require(ggpmisc)
 require(viridis)
 require(bcmaps)
+# require(ochRe)
 ```
 
 ```{r graphics-setup, include = FALSE}
 
-pal.parl <- colorRampPalette(ochRe::ochre_palettes[["parliament"]])
-pal.nam <- colorRampPalette(ochRe::ochre_palettes[["namatjira_qual"]])
-font_add_google('Anton', 'anton')
-showtext_auto()
+# pal.parl <- colorRampPalette(ochRe::ochre_palettes[["parliament"]])
+# pal.nam <- colorRampPalette(ochRe::ochre_palettes[["namatjira_qual"]])
+# font_add_google('Anton', 'anton')
+# showtext_auto()
 
 ```
 
-This report provides several metrics of interest from the sampling stage of the PEM process, including the distribution of forest age, dominant species, common disturbances, topographic variables, and others. It also summarizes key outputs from the prepR workflow and briefly describes their purpose in the modelling process. More details on the data, methodology, and results from the samplR workflow can be found in the \[PEM Manual\].
+This report provides several metrics of interest from the sampling stage of the PEM process, including comparisons of planned samples vs actual samples and various metrics on collected points. More details on the data, methodology, and results from the samplR workflow can be found in the \[PEM Manual\].
 
-```{r aoi-setup}
+```{r aoi-setup, echo = FALSE}
 
-  path = "C:/Users/ccarmour.stu/OneDrive/PEM"
-  aoi_name = "Deception_AOI"
-  aoi_file = "C:\\Users\\ccarmour.stu\\OneDrive\\PEM\\Deception_AOI\\00_raw_inputs\\10_vector\\aoi_raw.gpkg"
-  open=FALSE
-  proj_dir <- file.path(path, aoi_name)
+# aoi <- sf::st_read("D:\\PEM_DATA\\PEM_AOI\\DateCreek_AOI\\DateCreek_AOI\\00_raw_inputs\\10_vector\\aoi.gpkg", quiet = TRUE)
+
+pts <- sf::st_read("D:/PEM_DATA/PEM_AOI/DateCreek_AOI/DateCreek_AOI/20_sample_plan/10_standard_sample/40_transect_data/attributed_field_data/allpts.gpkg")
+
+splan <- sf::st_read("D:/PEM_DATA/PEM_AOI/DateCreek_AOI/DateCreek_AOI/20_sample_plan/10_standard_sample/30_sampleplan_final/transect/s1_sampling.gpkg")
+
+```
+
+The following table summarizes the transects that were sampled in this AOI.
+
+```{r subzone-summary}
+
+# SAMPLED ZONES
+szvp_sampled <- pts %>%
+  filter(!is.na(transect_id)) %>%
+  mutate(szvp = map_chr(str_split(transect_id, pattern = "_"), 1)) %>%
+  pull(szvp) %>%
+  unique() %>%
+  str_flatten(collapse = ", ")
+
+# NUMBER OF TRANSECTS
+transects <- pts %>%
+  sf::st_drop_geometry() %>%
+  filter(!is.na(transect_id)) %>%
+  group_by(transect_id) %>%
+  summarize(n()) %>%
+  mutate(szvp = map_chr(str_split(transect_id, pattern = "_"), 1)) %>%
+  ungroup() %>%
+  group_by(szvp) %>%
+  summarize(n())
+
+total_transects <- transects %>% pull('n()') %>% sum()
+
 
 
 
 
 ```
+
+
+
 
