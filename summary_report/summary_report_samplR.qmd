@@ -55,7 +55,7 @@ roads <- sf::st_read("C:/Users/ccarmour.stu/OneDrive/PEM/PEM_report_files/PEM_re
 layers <- sf::st_layers("C:/Users/ccarmour.stu/OneDrive/PEM_report_files/DateCreek_AOI/transect_layout/s1_sampling.gpkg") %>%
   .$name
 
-clhs_layers <- layers[str_detect(string = layers, pattern = "points_all$")]
+clhs_layers <- layers[str_detect(string = layers, pattern = "points_clhs$")]
 
 clhs_comb <- st_read("C:/Users/ccarmour.stu/OneDrive/PEM_report_files/DateCreek_AOI/transect_layout/s1_sampling.gpkg") %>% filter(FALSE)
 
@@ -64,14 +64,15 @@ for(i in 1:length(clhs_layers)){
   if("ID" %in% names(layer)){
     layer <- rename(layer, id = ID)
   }
+  layer <- dplyr::select(layer, c("id", "geom"))
   clhs_comb <- rbind(clhs_comb, layer)
 }
 
 clhs_comb <- clhs_comb %>%
-  filter(str_detect(id, pattern = "cLHS")) %>%
   mutate(szvp = map_chr(str_split(id, pattern = "_"), 1),
          szvp = str_replace_all(szvp, pattern = " ", replacement = ""),
-         szvp = as.factor(szvp))
+         szvp = as.factor(szvp),
+         id = str_replace_all(id, pattern = " ", replacement = ""))
 
 ```
 
@@ -83,7 +84,7 @@ clhs_comb <- clhs_comb %>%
 ggplot2::ggplot(data = clhs_comb) +
   tidyterra::geom_spatvector(data = terra::vect(aoi), color = "black", fill = "transparent") +
   tidyterra::geom_spatvector(data = terra::vect(roads), color = "grey", fill = "transparent") +
-  tidyterra::geom_spatvector(data = terra::vect(clhs_comb), aes(color = szvp), size = 3) +
+  tidyterra::geom_spatvector(data = terra::vect(clhs_comb), aes(color = szvp), size = 2.5) +
   labs(color = "BEC Subzone/Variant") +
   ggspatial::annotation_north_arrow(
     location = "tr", # Position: bottom-right
@@ -142,6 +143,7 @@ for(i in 1:length(tsct_layers)){
   if("ID" %in% names(layer)){
     layer <- rename(layer, id = ID)
   }
+  layer <- dplyr::select(layer, c("id", "geom"))
   tsct_comb <- rbind(tsct_comb, layer)
 }
 
@@ -149,13 +151,14 @@ tsct_sp <- tsct_comb %>%
   mutate(szvp = map_chr(str_split(id, pattern = "_"), 1),
          szvp = str_replace_all(szvp, pattern = " ", replacement = ""),
          szvp = as.factor(szvp),
-         transect_id = str_replace_all(id, pattern = " ", replacement = ""))
+         id = str_replace_all(id, pattern = " ", replacement = ""))
 
 tsct_sd <- pts %>%
   sf::st_drop_geometry() %>%
-  mutate(transect_id = str_replace_all(transect_id, pattern = " ", replacement = "")) %>%
-  group_by(transect_id) %>%
-  summarize(count = n())
+  mutate(szvp = map_chr(str_split(id, pattern = "_"), 1),
+         szvp = str_replace_all(szvp, pattern = " ", replacement = ""),
+         szvp = as.factor(szvp),
+         id = str_replace_all(id, pattern = " ", replacement = ""))
 
 tsct_all <- full_join(tsct_sp, tsct_sd, by = "transect_id", keep = TRUE) %>% filter(str_detect(transect_id.x, pattern = "cLHS"))
 
