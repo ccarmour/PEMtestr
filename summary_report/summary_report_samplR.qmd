@@ -161,38 +161,51 @@ Often, due to constraints in the field or outdated information on roads, cutbloc
 
 pts <- sf::st_read("C:/Users/ccarmour.stu/OneDrive/PEM/PEM_report_files/PEM_report_files/DateCreek_AOI/trainingData/att_5m/s1_transect_all_pts_att.gpkg")
 
-
-tsct_comb <- st_read("C:/Users/ccarmour.stu/OneDrive/PEM_report_files/DateCreek_AOI/transect_layout/s1_sampling.gpkg") %>% filter(FALSE)
-
-for(i in 1:length(tsct_layers)){
-  layer <- sf::st_read("C:/Users/ccarmour.stu/OneDrive/PEM_report_files/DateCreek_AOI/transect_layout/s1_sampling.gpkg", layer = tsct_layers[i])
-  if("ID" %in% names(layer)){
-    layer <- rename(layer, id = ID)
-  }
-  layer <- dplyr::select(layer, c("id", "geom"))
-  tsct_comb <- rbind(tsct_comb, layer)
-}
-
-tsct_sp <- tsct_comb %>%
-  mutate(szvp = map_chr(str_split(id, pattern = "_"), 1),
-         szvp = str_replace_all(szvp, pattern = " ", replacement = ""),
-         szvp = as.factor(szvp),
-         id = str_replace_all(id, pattern = " ", replacement = ""))
+tsct_sp <- layers_comb
 
 tsct_sd <- pts %>%
   sf::st_drop_geometry() %>%
-  mutate(id = transect_id,
-         szvp = map_chr(str_split(id, pattern = "_"), 1),
-         szvp = str_replace_all(szvp, pattern = " ", replacement = ""),
+  dplyr::mutate(id = transect_id,
+         szvp = purrr::map_chr(str_split(id, pattern = "_"), 1),
+         szvp = stringr::str_replace_all(szvp, pattern = " ", replacement = ""),
          szvp = as.factor(szvp),
-         id = str_replace_all(id, pattern = " ", replacement = "")) %>%
-  group_by(id) %>%
-  summarize(n())
+         id = stringr::str_replace_all(id, pattern = " ", replacement = "")) %>%
+  dplyr::group_by(id) %>%
+  dplyr::summarize(n())
 
-tsct_all <- full_join(tsct_sp, tsct_sd, by = "id", keep = TRUE) %>% filter(!is.na(id.y))
-
+tsct_all <- tsct_sp %>% 
+  dplyr::full_join(., tsct_sd, by = "id", keep = TRUE) %>%
+  dplyr::filter(!is.na(id.y))
 
 
 
 ```
 
+
+```{r sample-plan-map, echo = FALSE}
+
+#| fig-width: 8
+#| fig-height: 4
+
+aoi <- sf::st_read("C:/Users/ccarmour.stu/OneDrive/PEM/PEM_report_files/PEM_report_files/DateCreek_AOI/base_layers/aoi.gpkg")
+roads <- sf::st_read("C:/Users/ccarmour.stu/OneDrive/PEM/PEM_report_files/PEM_report_files/DateCreek_AOI/base_layers/roads_vetted.gpkg")
+
+
+ggplot2::ggplot(data = tsct_all) +
+  tidyterra::geom_spatvector(data = terra::vect(aoi), color = "black", fill = "transparent") +
+  tidyterra::geom_spatvector(data = terra::vect(roads), color = "grey", fill = "transparent") +
+  tidyterra::geom_spatvector(data = terra::vect(tsct_all), aes(color = szvp), size = 2) +
+  labs(color = "BEC Subzone/Variant") +
+  ggspatial::annotation_north_arrow(
+    location = "tr", # Position: bottom-right
+    which_north = "true", # True North
+    pad_x = unit(0.5, "cm"), # Padding from x-axis
+    pad_y = unit(0.5, "cm"), # Padding from y-axis
+    style = ggspatial::north_arrow_fancy_orienteering() # Style of the arrow
+  ) +
+  theme(
+    legend.position = "bottom"
+  )
+
+
+```
