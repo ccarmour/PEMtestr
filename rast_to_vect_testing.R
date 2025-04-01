@@ -54,3 +54,27 @@ ggplot() +
   coord_fixed()
 
 ggsave(filename  = "C:/Users/ccarmour.stu/OneDrive/UBC/agreements_deliverables/2025_figs/cropped_PEM_to_VRI.png")
+
+
+full_key <- readxl::read_xlsx("C:/Users/ccarmour.stu/OneDrive/UBC/phd_data/bec_pem/tables/PEM_map_key.xlsx") %>%
+  tibble() %>%
+  select(c(map_label, z_szvp_ss_code)) %>%
+  mutate(map_label = as.double(map_label))
+
+levels(pem) <- list(full_key)
+
+pem_agg <- terra::aggregate(pem, fact = 5, fun = "modal")
+
+pem_plot <- pem_agg %>%
+  as.data.frame(xy = T) %>%
+  tibble()
+
+ggplot() +
+  geom_raster(data = pem_plot, aes(x = x, y = y, fill = z_szvp_ss_code)) +
+  coord_fixed() +
+  labs(fill = "BEC Subzone/Variant") +
+  theme(
+    legend.position = "bottom",
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )

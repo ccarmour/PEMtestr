@@ -1,6 +1,5 @@
 ---
 title: "PrepR Summary Report"
-format: PrettyPDF-pdf
 fig.height: 4.5
 fig.width: 6.5
 editor_options: 
@@ -40,16 +39,21 @@ showtext_auto()
 
 This report provides several metrics of interest over the geographic extent of the AOI, including the distribution of forest age, dominant species, common disturbances, topographic variables, and others. It also summarizes key outputs from the prepR workflow and briefly describes their purpose in the modelling process. More details on the data, methodology, and results from the prepR workflow can be found in the \[PEM Manual\].
 
+```{r get-aoi, include = FALSE}
+
+aoi_path <- "C:/Users/ccarmour.stu/OneDrive/PEM_report_files/Boundary_AOI/base_layers/aoi.gpkg"
+
+aoi <- sf::st_read(aoi_path, quiet = TRUE)
+
+bc_outline <- bcmaps::bc_bound(ask = FALSE, force = TRUE) %>% st_geometry()
+
+```
 
 ```{r aoi-inset, echo = FALSE}
 
 #| fig-cap: "Figure 1: A map of where the [AOI_name] AOI is located in British Columbia."
 #| fig-width: 6
 #| fig-height: 4
-
-aoi <- sf::st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/base_layers/aoi.gpkg", quiet = TRUE)
-
-bc_outline <- bcmaps::bc_bound(ask = FALSE, force = TRUE) %>% st_geometry()
 
 ggplot2::ggplot() +
   tidyterra::geom_spatvector(data = terra::vect(bc_outline), fill = "floralwhite") +
@@ -70,7 +74,9 @@ ggplot2::ggplot() +
 #| fig-width: 6
 #| fig-height: 4
 
-bec <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/base_layers/bec.gpkg", quiet = TRUE) %>%
+bec_path <- "C:/Users/ccarmour.stu/OneDrive/PEM_report_files/Boundary_AOI/base_layers/bec.gpkg"
+
+bec <- st_read(bec_path, quiet = TRUE) %>%
   dplyr::mutate(BGC_LABEL = stringr::str_replace_all(BGC_LABEL, " ", ""))
 
 ggplot(data = terra::vect(bec), mapping = aes(fill = BGC_LABEL)) +
@@ -117,7 +123,9 @@ bec.df %>%
 #| fig-width: 6
 #| fig-height: 4
 
-vri <- sf::st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/base_layers/vri_detail.gpkg", quiet = TRUE) %>%
+vri_path <- "C:/Users/ccarmour.stu/OneDrive/PEM_report_files/Boundary_AOI/base_layers/vri_detail.gpkg"
+
+vri <- sf::st_read(vri_path, quiet = TRUE) %>%
   sf::st_join(bec, join = st_intersects, quiet = TRUE, left = FALSE) %>%
   dplyr::mutate(BEC_LABEL = str_c(BEC_ZONE_CODE, BEC_SUBZONE),
                 BEC_LABEL = case_when(
@@ -209,13 +217,13 @@ ggplot() +
   )
 
 
-# water <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/base_layers/water.gpkg")
-# fire <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/base_layers/fires.gpkg")
-# roads <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/base_layers/roads_vetted.gpkg")
+# water <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/Boundary_AOI/0_raw_inputs/base_layers/water.gpkg")
+# fire <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/Boundary_AOI/0_raw_inputs/base_layers/fires.gpkg")
+# roads <- st_read("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/Boundary_AOI/0_raw_inputs/base_layers/roads_vetted.gpkg")
 
 ```
 
-```{r species-dist, echo = FALSE}
+```{r species-dist, include = FALSE}
 
 species.df <- vri %>%
   dplyr::select(starts_with("SPECIES")) %>%
@@ -270,6 +278,9 @@ cd.all <- dplyr::full_join(x = cd.1, y = cd.2, by = ("SPECIES.CD"), keep = FALSE
 
 max.area = max(cd.all$AREA.BY.GRP.TOTAL, na.rm = TRUE)
 
+```
+
+```{r species-plot, echo = FALSE}
 ggplot(cd.all, aes(x = reorder(SPECIES.CD, -AREA.BY.GRP.TOTAL), y = AREA.BY.GRP.TOTAL)) +
   geom_bar(stat = "identity", fill = pal.nam(8)[8]) +
   labs(
@@ -294,38 +305,39 @@ ggplot(cd.all, aes(x = reorder(SPECIES.CD, -AREA.BY.GRP.TOTAL), y = AREA.BY.GRP.
   )
 ```
 
+
 ```{r dem-metrics, echo = FALSE}
-
-dem <- terra::rast("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/0_raw_inputs/dem/lidar/1m_DTM_mosaic.tif")
-
-dem.5m <- dem %>%
-  terra::aggregate(fact = 5, fun = "mean")
-
-r.vals <- terra::values(dem.5m, na.rm = TRUE)
-
-elev.vals <- list(mean = mean(r.vals, na.rm = TRUE),
-                  min = min(r.vals, na.rm = TRUE),
-                  max = max(r.vals, na.rm = TRUE))
+# 
+# dem <- terra::rast("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/Boundary_AOI/0_raw_inputs/dem/lidar/1m_DTM_mosaic.tif")
+# 
+# dem.5m <- dem %>%
+#   terra::aggregate(fact = 5, fun = "mean")
+# 
+# r.vals <- terra::values(dem.5m, na.rm = TRUE)
+# 
+# elev.vals <- list(mean = mean(r.vals, na.rm = TRUE),
+#                   min = min(r.vals, na.rm = TRUE),
+#                   max = max(r.vals, na.rm = TRUE))
 ```
 
 ```{r covar-table, echo = FALSE}
 
-covars.df <- list.files("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/DateCreek_AOI/1_map_inputs/covariates/25m", pattern = ".tif$", full.names = TRUE) %>%
-  terra::rast() %>%
-  terra::values() %>%
-  data.frame()
-
-names(covars.df)[which(stringr::str_detect(names(covars.df), pattern = "sen_savi"))[2]] <- "sen_savi_6class"
-
-covars.df %>%
-  purrr::map(~ c(mean = mean(., na.rm = TRUE),
-                 min = min(., na.rm = TRUE),
-                 max = max(., na.rm = TRUE))) %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "statistic")  %>%
-  pivot_longer(-statistic, names_to = "covariate", values_to = "value") %>%
-  pivot_wider(names_from = statistic, values_from = value) %>%
-  mutate(across(c(mean, min, max), ~ round(.x, 4))) %>% 
-  gt::gt()
+# covars.df <- list.files("C:/Users/ccarmour.stu/OneDrive - Government of BC/PEM/AOIs/Boundary_AOI/1_map_inputs/covariates/25m", pattern = ".tif$", full.names = TRUE) %>%
+#   terra::rast() %>%
+#   terra::values() %>%
+#   data.frame()
+# 
+# names(covars.df)[which(stringr::str_detect(names(covars.df), pattern = "sen_savi"))[2]] <- "sen_savi_6class"
+# 
+# covars.df %>%
+#   purrr::map(~ c(mean = mean(., na.rm = TRUE),
+#                  min = min(., na.rm = TRUE),
+#                  max = max(., na.rm = TRUE))) %>%
+#   as.data.frame() %>%
+#   rownames_to_column(var = "statistic")  %>%
+#   pivot_longer(-statistic, names_to = "covariate", values_to = "value") %>%
+#   pivot_wider(names_from = statistic, values_from = value) %>%
+#   mutate(across(c(mean, min, max), ~ round(.x, 4))) %>% 
+#   gt::gt()
 ```
 
